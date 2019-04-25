@@ -1,0 +1,40 @@
+package jwt
+
+import (
+	"net/http"
+	"time"
+
+	"gin.com/pkg/error"
+	"gin.com/pkg/util"
+	"github.com/EDDYCJY/go-gin-example/pkg/e"
+	"github.com/gin-gonic/gin"
+)
+
+func JWT() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var code int
+		var data interface{}
+		code = error.SUCCESS
+		token := c.Query("token")
+		if token == "" {
+			code = e.INVALID_PARAMS
+		} else {
+			claims, err := util.ParseToken(token)
+			if err != nil {
+				code = e.ERROR_AUTH_CHECK_TOKEN_FAIL
+			} else if time.Now().Unix() > claims.ExpiresAt {
+				code = e.ERROR_AUTH_CHECK_TOKEN_TIMEOUT
+			}
+		}
+		if code != error.SUCCESS {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code": code,
+				"msg":  e.GetMsg(code),
+				"data": data,
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
